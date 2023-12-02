@@ -29,6 +29,11 @@ func main() {
 		log.Fatalf("Failed to find %s", flowSensorPinName)
 	}
 
+	// Configura o pino como entrada com pull-down
+	if err := flowSensorPin.In(gpio.PullDown, gpio.BothEdges); err != nil {
+		log.Fatal(err)
+	}
+
 	// Configura o pino do sensor de fluxo para entrada
 	if err := flowSensorPin.In(gpio.PullDown, gpio.BothEdges); err != nil {
 		log.Fatal(err)
