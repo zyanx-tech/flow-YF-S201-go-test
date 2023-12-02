@@ -59,8 +59,11 @@ func main() {
 func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
 	pulseCount := 0
 	startTime := time.Now()
-	fmt.Println("FlowSensor")
+	fmt.Println("Iniciando monitoramento do sensor de fluxo")
 	for {
+		currentState := flowSensorPin.Read()
+		fmt.Printf("Estado atual do sensor: %v\n", currentState)
+
 		if flowSensorPin.WaitForEdge(-1) {
 			pulseCount++
 			elapsedTime := time.Since(startTime).Seconds()
