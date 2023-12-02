@@ -64,25 +64,24 @@ func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
 		currentState := flowSensorPin.Read()
 		fmt.Printf("Estado atual do sensor: %v\n", currentState)
 
-		if flowSensorPin.WaitForEdge(-1) {
+		if flowSensorPin.WaitForEdge(time.Second) {
 			pulseCount++
-			elapsedTime := time.Since(startTime).Seconds()
 			volume := float64(pulseCount) / flowRate
 
-			fmt.Printf("Volume medido: %.2f mL\n", volume)
+			fmt.Printf("Pulso detectado! Contagem de pulsos: %d, Volume medido: %.2f mL\n", pulseCount, volume)
 
 			if volume >= 200 {
 				// Fecha a válvula e para o monitoramento
 				valveControlPin.Out(gpio.High)
 				fmt.Println("Limite de 200 mL atingido, válvula fechada")
 				return
+			} else {
+				fmt.Println("Nenhum pulso detectado neste intervalo.")
 			}
 
-			// Impede a verificação constante do sensor
-			time.Sleep(time.Millisecond * 100)
-
-			if elapsedTime > 30 { // Tempo máximo de operação (1/2 minuto, ajuste conforme necessário)
-				valveControlPin.Out(gpio.Low)
+			elapsedTime := time.Since(startTime).Seconds()
+			if elapsedTime > 30 {
+				valveControlPin.Out(gpio.High)
 				fmt.Println("Tempo máximo de operação atingido, válvula fechada")
 				return
 			}
