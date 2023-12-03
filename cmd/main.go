@@ -24,7 +24,7 @@ func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
 	for {
 		// Espera por uma mudança de estado (pulso)
 		fmt.Println("Monitor...")
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 		valveControlPin.Out(gpio.Low)
 		time.Sleep(3 * time.Second)
 		valveControlPin.Out(gpio.High)
