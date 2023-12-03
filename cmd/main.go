@@ -17,6 +17,29 @@ const (
 	sampleTime          = 1 * time.Second
 )
 
+func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
+	pulseCount := 0
+	lastPulseTime := time.Now()
+
+	for {
+		// Espera por uma mudança de estado (pulso)
+		if flowSensorPin.WaitForEdge(-1) {
+			currentTime := time.Now()
+			if currentTime.Sub(lastPulseTime) > 10*time.Millisecond { // Debounce simples
+				pulseCount++
+				lastPulseTime = currentTime
+			}
+		}
+
+		// Imprime a contagem de pulsos a cada segundo
+		if time.Since(lastPulseTime) > sampleTime {
+			fmt.Printf("Contagem de pulsos: %d\n", pulseCount)
+			pulseCount = 0
+			lastPulseTime = time.Now()
+		}
+	}
+}
+
 func main() {
 	fmt.Println("Iniciando...")
 
@@ -52,21 +75,4 @@ func main() {
 
 	// Desliga a válvula solenoide ao finalizar
 	valveControlPin.Out(gpio.High)
-}
-
-func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
-	pulseCount := 0
-	startTime := time.Now()
-
-	for {
-		if flowSensorPin.WaitForEdge(-1) {
-			pulseCount++
-		}
-
-		if time.Since(startTime) > sampleTime {
-			fmt.Printf("Contagem de pulsos: %d\n", pulseCount)
-			pulseCount = 0
-			startTime = time.Now()
-		}
-	}
 }
