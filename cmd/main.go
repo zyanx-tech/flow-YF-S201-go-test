@@ -66,7 +66,7 @@ func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
 	startTime := time.Now()
 	fmt.Println("Iniciando monitoramento do sensor de fluxo")
 	for {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 		currentState := flowSensorPin.Read()
 		fmt.Printf("Estado atual do sensor: %v\n", currentState)
 
