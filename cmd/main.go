@@ -11,45 +11,34 @@ import (
 )
 
 const (
-	flowSensorPinName   = "GPIO13"
-	valveControlPinName = "GPIO23"
-	flowRate            = 4.5 // em mL por segundo, ajuste conforme as especificações do seu sensor
+	flowSensorPinName   = "GPIO13" // Pino do sensor de fluxo
+	valveControlPinName = "GPIO23" // Pino de controle da válvula solenoide
+	runTime             = 60 * time.Second
+	sampleTime          = 1 * time.Second
 )
 
 func main() {
-	fmt.Println("Start...")
+	fmt.Println("Iniciando...")
 
 	// Inicializa periph.io
 	if _, err := host.Init(); err != nil {
 		log.Fatal(err)
 	}
 
+	// Configura o pino do sensor de fluxo
 	flowSensorPin := gpioreg.ByName(flowSensorPinName)
 	if flowSensorPin == nil {
-		log.Fatalf("Failed to find %s", flowSensorPinName)
+		log.Fatalf("Falha ao encontrar %s", flowSensorPinName)
 	}
-
-	// Configura o pino como entrada com pull-down
-	if err := flowSensorPin.In(gpio.PullDown, gpio.BothEdges); err != nil {
+	if err := flowSensorPin.In(gpio.PullUp, gpio.FallingEdge); err != nil {
 		log.Fatal(err)
 	}
 
-	// Configura o pino do sensor de fluxo para entrada
-	if err := flowSensorPin.In(gpio.PullDown, gpio.BothEdges); err != nil {
-		log.Fatal(err)
-	}
-
+	// Configura o pino da válvula solenoide
 	valveControlPin := gpioreg.ByName(valveControlPinName)
 	if valveControlPin == nil {
-		log.Fatalf("Failed to find %s", valveControlPinName)
+		log.Fatalf("Falha ao encontrar %s", valveControlPinName)
 	}
-
-	// Configura a GPIO da válvula como saída e abre a válvula
-	if err := valveControlPin.Out(gpio.High); err != nil {
-		log.Fatal(err)
-	}
-
-	// Configura a GPIO da válvula como saída e abre a válvula
 	if err := valveControlPin.Out(gpio.Low); err != nil {
 		log.Fatal(err)
 	}
@@ -57,39 +46,27 @@ func main() {
 	// Monitora o sensor de fluxo
 	go monitorFlowSensor(flowSensorPin, valveControlPin)
 
-	// Mantém o programa rodando
-	select {}
+	// Executa por um tempo definido
+	time.Sleep(runTime)
+	fmt.Println("Execução finalizada.")
+
+	// Desliga a válvula solenoide ao finalizar
+	valveControlPin.Out(gpio.High)
 }
 
 func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
 	pulseCount := 0
 	startTime := time.Now()
-	fmt.Println("Iniciando monitoramento do sensor de fluxo")
+
 	for {
-		currentState := flowSensorPin.Read()
-		fmt.Printf("Estado atual do sensor: %v\n", currentState)
-
-		if flowSensorPin.WaitForEdge(time.Second) {
+		if flowSensorPin.WaitForEdge(-1) {
 			pulseCount++
-			volume := float64(pulseCount) / flowRate
+		}
 
-			fmt.Printf("Pulso detectado! Contagem de pulsos: %d, Volume medido: %.2f mL\n", pulseCount, volume)
-
-			if volume >= 200 {
-				// Fecha a válvula e para o monitoramento
-				valveControlPin.Out(gpio.High)
-				fmt.Println("Limite de 200 mL atingido, válvula fechada")
-				return
-			} else {
-				fmt.Println("Nenhum pulso detectado neste intervalo.")
-			}
-
-			elapsedTime := time.Since(startTime).Seconds()
-			if elapsedTime > 30 {
-				valveControlPin.Out(gpio.High)
-				fmt.Println("Tempo máximo de operação atingido, válvula fechada")
-				return
-			}
+		if time.Since(startTime) > sampleTime {
+			fmt.Printf("Contagem de pulsos: %d\n", pulseCount)
+			pulseCount = 0
+			startTime = time.Now()
 		}
 	}
 }
