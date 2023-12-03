@@ -19,49 +19,56 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Configura GPIO23 como saída e inicializa em LOW
-	gpio23 := gpioreg.ByName("GPIO23")
-	if gpio23 == nil {
-		log.Fatal("Falha ao encontrar GPIO23")
+	// Configura o GPIO13 para o sensor
+	flowsensor := gpioreg.ByName("GPIO13")
+	if flowsensor == nil {
+		log.Fatal("Falha ao encontrar o GPIO13")
 	}
-	if err := gpio23.Out(gpio.Low); err != nil {
+	if err := flowsensor.In(gpio.PullUp, gpio.BothEdges); err != nil {
 		log.Fatal(err)
 	}
 
-	// Configura GPIO13 como entrada
-	gpio13 := gpioreg.ByName("GPIO13")
-	if gpio13 == nil {
-		log.Fatal("Falha ao encontrar GPIO13")
+	// Configura o GPIO23 para o relé
+	relay := gpioreg.ByName("GPIO23")
+	if relay == nil {
+		log.Fatal("Falha ao encontrar o GPIO23")
 	}
-	if err := gpio13.In(gpio.PullDown, gpio.BothEdges); err != nil {
+	if err := relay.Out(gpio.Low); err != nil {
 		log.Fatal(err)
 	}
 
-	// Escuta sinais de interrupção para encerrar o programa
+	// Preparação para capturar sinal de interrupção
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		fmt.Println("\nSinal de interrupção recebido. Definindo GPIO23 para HIGH e encerrando.")
-		gpio23.Out(gpio.High)
 		os.Exit(0)
 	}()
 
-	// Loop para contar os pulsos
-	fmt.Println("Lendo dados do sensor. Pressione Ctrl+C para sair.")
-	count := 0
+	// Variáveis para cálculo da vazão
+	var flowFrequency int
+	var lHour float64
 	startTime := time.Now()
+
+	// Loop principal
 	for {
-		if gpio13.WaitForEdge(-1) { // Espera indefinidamente por uma mudança de borda
-			count++
+		if flowsensor.WaitForEdge(-1) { // Espera por uma mudança de borda
+			flowFrequency++
 		}
 
-		// Exemplo de cálculo de frequência (a cada segundo)
+		// Cálculo da vazão a cada segundo
 		if time.Since(startTime) >= time.Second {
-			frequency := count
-			count = 0
+			lHour = float64(flowFrequency) * 60.0 / 7.5 // Conversão para litros/hora
+			flowFrequency = 0
 			startTime = time.Now()
-			fmt.Printf("Frequência: %d Hz\n", frequency)
+			fmt.Printf("%.2f L/hour\n", lHour) // Formata a saída para duas casas decimais
+
+			// Lógica para controlar o relé
+			if lHour > 100 {
+				relay.Out(gpio.High)
+			} else {
+				relay.Out(gpio.Low)
+			}
 		}
 	}
 }
