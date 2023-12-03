@@ -28,10 +28,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Configura GPIO13 para leitura
+	// Configura GPIO13 como entrada
 	gpio13 := gpioreg.ByName("GPIO13")
 	if gpio13 == nil {
 		log.Fatal("Falha ao encontrar GPIO13")
+	}
+	if err := gpio13.In(gpio.PullDown, gpio.BothEdges); err != nil {
+		log.Fatal(err)
 	}
 
 	// Escuta sinais de interrupção para encerrar o programa
