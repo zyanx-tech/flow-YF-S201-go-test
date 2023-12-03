@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"periph.io/x/conn/v3/gpio"
@@ -10,75 +13,52 @@ import (
 	"periph.io/x/host/v3"
 )
 
-const (
-	flowSensorPinName   = "GPIO13" // Pino do sensor de fluxo
-	valveControlPinName = "GPIO23" // Pino de controle da válvula solenoide
-	runTime             = 60 * time.Second
-	sampleTime          = 1 * time.Second
-)
-
-func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
-	pulseCount := 0
-	lastPulseTime := time.Now()
-
-	for {
-		// Espera por uma mudança de estado (pulso)
-		fmt.Println("Monitor...")
-		time.Sleep(10 * time.Millisecond)
-		valveControlPin.Out(gpio.Low)
-		time.Sleep(3 * time.Second)
-		valveControlPin.Out(gpio.High)
-		if flowSensorPin.WaitForEdge(-1) {
-			currentTime := time.Now()
-			if currentTime.Sub(lastPulseTime) > 1*time.Millisecond { // Debounce simples
-				fmt.Println(pulseCount)
-				pulseCount++
-				lastPulseTime = currentTime
-			}
-		}
-
-		// Imprime a contagem de pulsos a cada segundo
-		if time.Since(lastPulseTime) > sampleTime {
-			fmt.Printf("Contagem de pulsos: %d\n", pulseCount)
-			pulseCount = 0
-			lastPulseTime = time.Now()
-		}
-	}
-}
-
 func main() {
-	fmt.Println("Iniciando...")
-
-	// Inicializa periph.io
+	// Inicializa a biblioteca periph
 	if _, err := host.Init(); err != nil {
 		log.Fatal(err)
 	}
 
-	// Configura o pino do sensor de fluxo
-	flowSensorPin := gpioreg.ByName(flowSensorPinName)
-	if flowSensorPin == nil {
-		log.Fatalf("Falha ao encontrar %s", flowSensorPinName)
+	// Configura GPIO23 como saída e inicializa em LOW
+	gpio23 := gpioreg.ByName("GPIO23")
+	if gpio23 == nil {
+		log.Fatal("Falha ao encontrar GPIO23")
 	}
-	if err := flowSensorPin.In(gpio.PullUp, gpio.FallingEdge); err != nil {
+	if err := gpio23.Out(gpio.Low); err != nil {
 		log.Fatal(err)
 	}
 
-	// Configura o pino da válvula solenoide
-	valveControlPin := gpioreg.ByName(valveControlPinName)
-	if valveControlPin == nil {
-		log.Fatalf("Falha ao encontrar %s", valveControlPinName)
-	}
-	if err := valveControlPin.Out(gpio.Low); err != nil {
-		log.Fatal(err)
+	// Configura GPIO13 para leitura
+	gpio13 := gpioreg.ByName("GPIO13")
+	if gpio13 == nil {
+		log.Fatal("Falha ao encontrar GPIO13")
 	}
 
-	// Monitora o sensor de fluxo
-	go monitorFlowSensor(flowSensorPin, valveControlPin)
+	// Escuta sinais de interrupção para encerrar o programa
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println("\nSinal de interrupção recebido. Definindo GPIO23 para HIGH e encerrando.")
+		gpio23.Out(gpio.High)
+		os.Exit(0)
+	}()
 
-	// Executa por um tempo definido
-	time.Sleep(runTime)
-	fmt.Println("Execução finalizada.")
+	// Loop para contar os pulsos
+	fmt.Println("Lendo dados do sensor. Pressione Ctrl+C para sair.")
+	count := 0
+	startTime := time.Now()
+	for {
+		if gpio13.WaitForEdge(-1) { // Espera indefinidamente por uma mudança de borda
+			count++
+		}
 
-	// Desliga a válvula solenoide ao finalizar
-	valveControlPin.Out(gpio.High)
+		// Exemplo de cálculo de frequência (a cada segundo)
+		if time.Since(startTime) >= time.Second {
+			frequency := count
+			count = 0
+			startTime = time.Now()
+			fmt.Printf("Frequência: %d Hz\n", frequency)
+		}
+	}
 }
