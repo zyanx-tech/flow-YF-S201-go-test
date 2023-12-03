@@ -24,7 +24,7 @@ func main() {
 	if flowsensor == nil {
 		log.Fatal("Falha ao encontrar o GPIO13")
 	}
-	if err := flowsensor.In(gpio.PullUp, gpio.BothEdges); err != nil {
+	if err := flowsensor.In(gpio.PullDown, gpio.BothEdges); err != nil {
 		log.Fatal(err)
 	}
 
