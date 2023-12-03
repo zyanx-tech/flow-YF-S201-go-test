@@ -26,7 +26,7 @@ func monitorFlowSensor(flowSensorPin, valveControlPin gpio.PinIO) {
 		fmt.Println("Monitor...")
 		if flowSensorPin.WaitForEdge(-1) {
 			currentTime := time.Now()
-			if currentTime.Sub(lastPulseTime) > 10*time.Millisecond { // Debounce simples
+			if currentTime.Sub(lastPulseTime) > 50*time.Millisecond { // Debounce simples
 				fmt.Println(pulseCount)
 				pulseCount++
 				lastPulseTime = currentTime
