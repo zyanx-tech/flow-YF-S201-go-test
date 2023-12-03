@@ -19,10 +19,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Configura o GPIO13 para o sensor
-	flowsensor := gpioreg.ByName("GPIO13")
+	// Configura o GPIO4 para o sensor
+	flowsensor := gpioreg.ByName("GPIO4")
 	if flowsensor == nil {
-		log.Fatal("Falha ao encontrar o GPIO13")
+		log.Fatal("Falha ao encontrar o GPIO4")
 	}
 	if err := flowsensor.In(gpio.PullDown, gpio.BothEdges); err != nil {
 		log.Fatal(err)
