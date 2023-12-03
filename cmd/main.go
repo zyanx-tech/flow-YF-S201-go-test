@@ -58,7 +58,7 @@ func main() {
 
 		// Cálculo da vazão a cada segundo
 		if time.Since(startTime) >= time.Second {
-			lHour = float64(flowFrequency) * 60.0 / 7.5 // Conversão para litros/hora
+			lHour = float64(flowFrequency) * 60.0 / 5.5 // Conversão para litros/hora
 			flowFrequency = 0
 			startTime = time.Now()
 			fmt.Printf("%.2f L/hour\n", lHour) // Formata a saída para duas casas decimais
